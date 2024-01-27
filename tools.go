@@ -55,22 +55,22 @@ func (t *Tools) UploadedFiles(r *http.Request, uploadDir string, rename ...bool)
 	if err != nil {
 		return nil, errors.New("the uploaded file is too big")
 	}
-	// fmt.Println(r.MultipartForm.File)
+	// fmt.Println(r.MultipartForm.File) // dict of slices
 	for _, fHeaders := range r.MultipartForm.File {
 		for _, hdr := range fHeaders {
-			uploadedFiles, err = func(uploadedFiles []*UploadedFile) ([]*UploadedFile, error) {
+			err = func() error {
 				var uploadedFile UploadedFile
 				infile, err := hdr.Open()
 
 				if err != nil {
-					return nil, err
+					return err
 				}
 				defer infile.Close()
 
 				buff := make([]byte, 512)
 				_, err = infile.Read(buff)
 				if err != nil {
-					return nil, err
+					return err
 				}
 
 				allowed := false
@@ -88,11 +88,11 @@ func (t *Tools) UploadedFiles(r *http.Request, uploadDir string, rename ...bool)
 				}
 
 				if !allowed {
-					return nil, errors.New("the file type is not permitted")
+					return errors.New("the file type is not permitted")
 				}
 				_, err = infile.Seek(0, 0)
 				if err != nil {
-					return nil, err
+					return err
 				}
 				// renaming the file
 				if renameFile {
@@ -107,20 +107,20 @@ func (t *Tools) UploadedFiles(r *http.Request, uploadDir string, rename ...bool)
 				defer outfile.Close()
 
 				if outfile, err = os.Create(filepath.Join(uploadDir, uploadedFile.NewFileName)); err != nil {
-					return nil, err
+					return err
 				} else {
 					fileSize, err := io.Copy(outfile, infile)
 					if err != nil {
-						return nil, err
+						return err
 					}
 					uploadedFile.FileSize = fileSize
 				}
 
 				uploadedFiles = append(uploadedFiles, &uploadedFile)
 
-				return uploadedFiles, nil
+				return nil
 
-			}(uploadedFiles)
+			}()
 			if err != nil {
 				return uploadedFiles, err
 			}
