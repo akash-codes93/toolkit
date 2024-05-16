@@ -2,6 +2,7 @@ package toolkit
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -179,3 +180,41 @@ func (t *Tools) Slugify(s string) (string, error) {
 
 // 	if
 // }
+
+// gives the list of files that have changed in a folder
+func (t *Tools) FindChangesInFolder(path string) ([]string, error) {
+
+	diff := []string{}
+	gitFile := path + ".json"
+	files, _ := getAllFiles(path)
+	root := createMerkelTree(files)
+
+	if !checkFileExists(gitFile) {
+		fmt.Println("Folder was not git checked, adding " + gitFile + "...")
+		bytes, err := json.Marshal(root)
+		if err != nil {
+			return diff, err
+		}
+		// fmt.Println(string(bytes))
+		_ = os.WriteFile(gitFile, bytes, 0644)
+		return diff, nil
+	}
+	// reading bytes from a file
+	bytes, err := os.ReadFile(gitFile)
+	if err != nil {
+		return diff, err
+	}
+	// unmarshall to tree
+	var oldRoot MerkelNode
+	err = json.Unmarshal(bytes, &oldRoot)
+	if err != nil {
+		return diff, err
+	}
+
+	diff = checkDifferentFiles(&oldRoot, root)
+	if len(diff) > 1 && diff[len(diff)-1] == diff[len(diff)-2] {
+		diff = diff[:len(diff)-1]
+	}
+
+	return diff, nil
+}
